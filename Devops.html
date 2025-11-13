@@ -3,96 +3,225 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Azure DevOps Login and Profile</title>
+  <title>Azure DevOps — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; background:#f6f9fc }
-    button { padding:12px 24px; font-size:16px; border:none; border-radius:8px; background:#0a66c2; color:white; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin:8px; }
-    button:hover { background:#004a99; }
-    #profile, #orgs { margin-top:20px; font-size:15px; color:#222; text-align:left; width:400px; max-width:90%; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:16px; }
-    #profile h2, #orgs h2 { font-size:18px; margin-bottom:10px; color:#0a1f3a; }
-    #orgList { list-style:none; padding:0; }
-    #orgList li { background:#f8faff; padding:8px 12px; border-radius:6px; margin:6px 0; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+    :root{
+      --azure-700:#0066cc;
+      --azure-500:#0a66c2;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;color:#0b1220;margin:0;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .container{width:900px;max-width:96%;min-height:620px;background:var(--card);border-radius:14px;display:grid;grid-template-columns:380px 1fr;gap:28px;padding:32px;box-shadow:0 10px 40px rgba(0,0,0,0.08)}
+
+    /* Left - sign-in */
+    .left{background:#f0f4fa;border-radius:12px;padding:28px;color:#0a1f3a;display:flex;flex-direction:column;justify-content:center}
+    .brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .logo{width:56px;height:56px;border-radius:12px;background:var(--card);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.08)}
+    .logo svg{width:34px;height:34px}
+    .title{font-weight:700;font-size:20px}
+    .subtitle{color:var(--muted);font-size:14px}
+    .signin-card{margin-top:18px;background:#fff;padding:18px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.05)}
+    .btn{display:inline-flex;align-items:center;gap:10px;padding:12px 18px;border-radius:10px;border:none;background:var(--azure-500);color:white;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(10,102,194,0.15)}
+    .btn:active{transform:translateY(1px)}
+    .btn .spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);border-top-color:rgba(255,255,255,0.95);animation:spin 1s linear infinite}
+
+    /* Right - dashboard */
+    .right{background:var(--bg);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:18px;box-shadow:inset 0 0 10px rgba(0,0,0,0.03)}
+    .topbar{display:flex;justify-content:space-between;align-items:center}
+    .user-info{display:flex;align-items:center;gap:12px}
+    .avatar{width:56px;height:56px;border-radius:12px;overflow:hidden;background:#eef3fb;display:flex;align-items:center;justify-content:center}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .name{font-weight:700}
+    .muted{color:var(--muted)}
+
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+    .card{background:var(--card);padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(10,37,80,0.04)}
+    .card h3{margin:0 0 12px 0}
+    .org-list{list-style:none;padding:0;margin:0}
+    .org-list li{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;background:#f7fbff;margin-bottom:8px}
+    .org-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(180deg,var(--azure-700),var(--azure-500));display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+
+    .placeholder{color:var(--muted);font-size:14px}
+
+    .hidden{display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fade-in{animation:fadeIn 400ms ease both}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+    @media (max-width:880px){
+      .container{grid-template-columns:1fr;padding:18px}
+      .cards{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
-  <button id="startBtn">Start</button>
+  <div class="container">
+    <!-- LEFT: Sign-in panel -->
+    <div class="left">
+      <div class="brand">
+        <div class="logo" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12c0-3.866 3.582-7 8-7 3.161 0 4.99 1.84 6 3.08" stroke="#0A66C2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12c0 3.866-3.582 7-8 7-3.161 0-4.99-1.84-6-3.08" stroke="#0A66C2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="title">Azure DevOps Portal</div>
+          <div class="subtitle">Sign in to view your profile and organizations</div>
+        </div>
+      </div>
 
-  <div id="profile" style="display:none">
-    <h2>Profile Details</h2>
-    <p><strong>Name:</strong> <span id="name"></span></p>
-    <p><strong>Email:</strong> <span id="email"></span></p>
-    <p><strong>Profile ID:</strong> <span id="profileId"></span></p>
-  </div>
+      <div class="signin-card">
+        <p class="placeholder">Use your organizational account to sign in. We'll securely request access to your Azure DevOps profile.</p>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+          <button id="startBtn" class="btn">
+            <span id="startText">Sign in with Microsoft</span>
+            <span id="startSpinner" class="spinner hidden" style="margin-left:6px"></span>
+          </button>
+          <button id="logoutBtn" class="btn" style="display:none;background:#d9d9d9;color:#333">Sign out</button>
+        </div>
+      </div>
+    </div>
 
-  <div id="orgs" style="display:none">
-    <h2>Organizations</h2>
-    <ul id="orgList"></ul>
+    <!-- RIGHT: Dashboard panel (hidden until login) -->
+    <div class="right hidden" id="dashboard">
+      <div class="topbar">
+        <div class="user-info">
+          <div class="avatar" id="avatarWrap"><img id="avatarImg" alt="avatar" src=""/></div>
+          <div>
+            <div class="name" id="displayName">--</div>
+            <div class="muted" id="displayEmail">--</div>
+          </div>
+        </div>
+        <div>
+          <button id="signOutTop" class="btn" style="background:#d9d9d9;color:#333">Logout</button>
+        </div>
+      </div>
+
+      <div class="cards">
+        <div class="card fade-in" id="profileCard">
+          <h3>Profile Details</h3>
+          <p><strong>Name:</strong> <span id="nameVal">-</span></p>
+          <p><strong>Email:</strong> <span id="emailVal">-</span></p>
+          <p><strong>Profile ID:</strong> <span id="idVal">-</span></p>
+        </div>
+
+        <div class="card fade-in" id="orgCard">
+          <h3>Organizations</h3>
+          <ul class="org-list" id="orgList">
+            <li class="placeholder">No organizations loaded.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://alcdn.msauth.net/browser/2.32.0/js/msal-browser.min.js"></script>
   <script>
+    const CLIENT_ID = '46ef5b8a-5281-4c41-89ed-c9f4bcf122c9';
+    const REDIRECT_URI = 'https://trajak.github.io/azure-devops-login/Devops.html';
+
     const msalConfig = {
       auth: {
-        clientId: '311be0e9-5fd6-414f-88ec-c091485681e2', // Replace with your Azure AD App Client ID
+        clientId: CLIENT_ID,
         authority: 'https://login.microsoftonline.com/common',
-        redirectUri: window.location.origin + window.location.pathname
-      }
+        redirectUri: REDIRECT_URI
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    document.getElementById('startBtn').addEventListener('click', async function () {
-      try {
-        const loginResponse = await msalInstance.loginPopup({
+    const startBtn = document.getElementById('startBtn');
+    const startSpinner = document.getElementById('startSpinner');
+    const startText = document.getElementById('startText');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const dashboard = document.getElementById('dashboard');
+    const avatarImg = document.getElementById('avatarImg');
+    const displayName = document.getElementById('displayName');
+    const displayEmail = document.getElementById('displayEmail');
+    const nameVal = document.getElementById('nameVal');
+    const emailVal = document.getElementById('emailVal');
+    const idVal = document.getElementById('idVal');
+    const orgList = document.getElementById('orgList');
+    const signOutTop = document.getElementById('signOutTop');
+
+    function showSpinner(show){
+      if(show){ startSpinner.classList.remove('hidden'); startText.textContent='Signing in...'; }
+      else { startSpinner.classList.add('hidden'); startText.textContent='Sign in with Microsoft'; }
+    }
+
+    async function signInAndLoad(){
+      try{
+        showSpinner(true);
+        const loginResp = await msalInstance.loginPopup({ scopes: ['User.Read'] });
+
+        const tokenResp = await msalInstance.acquireTokenSilent({
+          account: loginResp.account,
           scopes: ['499b84ac-1321-427f-aa17-267ca6975798/.default']
+        }).catch(async ()=>{
+          return await msalInstance.acquireTokenPopup({
+            account: loginResp.account,
+            scopes: ['499b84ac-1321-427f-aa17-267ca6975798/.default']
+          });
         });
 
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-          scopes: ['499b84ac-1321-427f-aa17-267ca6975798/.default'],
-          account: loginResponse.account
-        });
+        const token = tokenResp.accessToken;
 
-        const token = tokenResponse.accessToken;
-
-        // Fetch user profile
-        const profileRes = await fetch('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const profileRes = await fetch('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',{headers:{Authorization:`Bearer ${token}`}});
         const profile = await profileRes.json();
 
-        document.getElementById('profile').style.display = 'block';
-        document.getElementById('name').textContent = profile.displayName || 'Unknown';
-        document.getElementById('email').textContent = profile.emailAddress || 'N/A';
-        document.getElementById('profileId').textContent = profile.id;
+        const avatarUrl = profile._links && profile._links.avatar && profile._links.avatar.href ? profile._links.avatar.href : '';
 
-        // Fetch organizations
-        const orgRes = await fetch(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.0`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        avatarImg.src = avatarUrl || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="%23EEF3FB"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%230a1f3a" font-size="38">U</text></svg>';
+        displayName.textContent = profile.displayName || 'Unknown';
+        displayEmail.textContent = profile.emailAddress || '';
+        nameVal.textContent = profile.displayName || '-';
+        emailVal.textContent = profile.emailAddress || '-';
+        idVal.textContent = profile.id || '-';
+
+        const orgRes = await fetch(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.0`,{headers:{Authorization:`Bearer ${token}`}});
         const orgData = await orgRes.json();
-
-        const orgList = document.getElementById('orgList');
         orgList.innerHTML = '';
-
-        if (orgData.value && orgData.value.length > 0) {
-          orgData.value.forEach(org => {
+        if(orgData.value && orgData.value.length){
+          orgData.value.forEach(org=>{
             const li = document.createElement('li');
-            li.textContent = `${org.accountName} (${org.accountUri})`;
-            orgList.appendChild(li);
+            const icon = document.createElement('div'); icon.className='org-icon'; icon.textContent = org.accountName ? org.accountName.charAt(0).toUpperCase() : 'O';
+            const txt = document.createElement('div'); txt.innerHTML = `<strong>${org.accountName}</strong><div class='muted' style='font-size:13px'>${org.accountUri || ''}</div>`;
+            li.appendChild(icon); li.appendChild(txt); orgList.appendChild(li);
           });
-          document.getElementById('orgs').style.display = 'block';
         } else {
-          const li = document.createElement('li');
-          li.textContent = 'No organizations found.';
-          orgList.appendChild(li);
-          document.getElementById('orgs').style.display = 'block';
+          const li = document.createElement('li'); li.textContent='No organizations found.'; orgList.appendChild(li);
         }
 
-      } catch (err) {
-        console.error('Login or API call failed:', err);
-        alert('Authentication or data retrieval failed. See console for details.');
+        document.querySelector('.left').style.opacity='0.14';
+        dashboard.classList.remove('hidden');
+        dashboard.classList.add('fade-in');
+        logoutBtn.style.display='inline-flex';
+        showSpinner(false);
+      }catch(e){
+        console.error(e);
+        showSpinner(false);
+        alert('Sign-in or data retrieval failed. Check console for details.');
       }
-    });
+    }
+
+    async function signOutFull(){
+      try{
+        await msalInstance.logoutPopup({ postLogoutRedirectUri: REDIRECT_URI }).catch(()=>{});
+      }catch(e){ console.warn('logout popup error', e); }
+      dashboard.classList.add('hidden');
+      document.querySelector('.left').style.opacity='1';
+      logoutBtn.style.display='none';
+      avatarImg.src=''; displayName.textContent='--'; displayEmail.textContent='--'; nameVal.textContent='-'; emailVal.textContent='-'; idVal.textContent='-'; orgList.innerHTML='<li class="placeholder">No organizations loaded.</li>';
+    }
+
+    startBtn.addEventListener('click', signInAndLoad);
+    logoutBtn.addEventListener('click', signOutFull);
+    signOutTop.addEventListener('click', signOutFull);
   </script>
 </body>
 </html>
