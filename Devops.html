@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Azure DevOps Login and Profile</title>
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; background:#f6f9fc }
+    button { padding:12px 24px; font-size:16px; border:none; border-radius:8px; background:#0a66c2; color:white; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin:8px; }
+    button:hover { background:#004a99; }
+    #profile, #orgs { margin-top:20px; font-size:15px; color:#222; text-align:left; width:400px; max-width:90%; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:16px; }
+    #profile h2, #orgs h2 { font-size:18px; margin-bottom:10px; color:#0a1f3a; }
+    #orgList { list-style:none; padding:0; }
+    #orgList li { background:#f8faff; padding:8px 12px; border-radius:6px; margin:6px 0; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+  </style>
+</head>
+<body>
+  <button id="startBtn">Start</button>
+
+  <div id="profile" style="display:none">
+    <h2>Profile Details</h2>
+    <p><strong>Name:</strong> <span id="name"></span></p>
+    <p><strong>Email:</strong> <span id="email"></span></p>
+    <p><strong>Profile ID:</strong> <span id="profileId"></span></p>
+  </div>
+
+  <div id="orgs" style="display:none">
+    <h2>Organizations</h2>
+    <ul id="orgList"></ul>
+  </div>
+
+  <script src="https://alcdn.msauth.net/browser/2.32.0/js/msal-browser.min.js"></script>
+  <script>
+    const msalConfig = {
+      auth: {
+        clientId: '311be0e9-5fd6-414f-88ec-c091485681e2', // Replace with your Azure AD App Client ID
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri: window.location.origin + window.location.pathname
+      }
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    document.getElementById('startBtn').addEventListener('click', async function () {
+      try {
+        const loginResponse = await msalInstance.loginPopup({
+          scopes: ['499b84ac-1321-427f-aa17-267ca6975798/.default']
+        });
+
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+          scopes: ['499b84ac-1321-427f-aa17-267ca6975798/.default'],
+          account: loginResponse.account
+        });
+
+        const token = tokenResponse.accessToken;
+
+        // Fetch user profile
+        const profileRes = await fetch('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const profile = await profileRes.json();
+
+        document.getElementById('profile').style.display = 'block';
+        document.getElementById('name').textContent = profile.displayName || 'Unknown';
+        document.getElementById('email').textContent = profile.emailAddress || 'N/A';
+        document.getElementById('profileId').textContent = profile.id;
+
+        // Fetch organizations
+        const orgRes = await fetch(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.0`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const orgData = await orgRes.json();
+
+        const orgList = document.getElementById('orgList');
+        orgList.innerHTML = '';
+
+        if (orgData.value && orgData.value.length > 0) {
+          orgData.value.forEach(org => {
+            const li = document.createElement('li');
+            li.textContent = `${org.accountName} (${org.accountUri})`;
+            orgList.appendChild(li);
+          });
+          document.getElementById('orgs').style.display = 'block';
+        } else {
+          const li = document.createElement('li');
+          li.textContent = 'No organizations found.';
+          orgList.appendChild(li);
+          document.getElementById('orgs').style.display = 'block';
+        }
+
+      } catch (err) {
+        console.error('Login or API call failed:', err);
+        alert('Authentication or data retrieval failed. See console for details.');
+      }
+    });
+  </script>
+</body>
+</html>
