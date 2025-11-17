@@ -63,6 +63,14 @@
       animation:spin 1s linear infinite;margin-left:8px}
     @keyframes spin{to{transform:rotate(360deg)}}
 
+    .btn.danger-btn {
+      background:#dc2626 !important; /* red */
+      color:white !important;
+    }
+    .btn.danger-btn:hover {
+      background:#b91c1c !important; /* darker red */
+    }
+
     .signin-info{
       margin-top:4px;background:#f3f4ff;
       border:1px solid #e0e7ff;padding:16px;border-radius:14px;
@@ -99,10 +107,6 @@
     .owner-pill{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
     .owner-yes{background:#dcfce7;color:#166534;}
     .owner-no{background:#fee2e2;color:#b91c1c;}
-    .risk-badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
-    .risk-low{background:#dcfce7;color:#166534;}
-    .risk-medium{background:#fef3c7;color:#92400e;}
-    .risk-high{background:#fee2e2;color:#b91c1c;}
 
     #orgStatusMsg{min-height:1.2em;font-size:13px}
   </style>
@@ -194,15 +198,9 @@ function getDeleteBaseUrl(name, uri){
   return base.replace(/\/$/,"");
 }
 
-/* 🔧 Updated delete link with Auto-Scroll hash */
+/* Auto-scroll delete link */
 function getDeleteLink(name, uri){
   return getDeleteBaseUrl(name, uri) + "/_settings/organizationOverview#delete-organization";
-}
-
-/* Confirm Delete */
-function confirmOrgName(name){
-  const typed=prompt(`To confirm deletion, type this name:\n\n${name}`);
-  return typed && typed.trim().toLowerCase()===name.toLowerCase();
 }
 
 /* Token */
@@ -231,7 +229,7 @@ const startBtn=document.getElementById("startBtn"),
 let lastOrgSnapshot=null, hasInitialSnapshot=false;
 function showStatus(msg){ orgStatusMsg.textContent=msg||""; }
 
-/* ---------- MAIN SIGN-IN & LOAD ---------- */
+/* ---------- SIGN-IN & LOAD ---------- */
 async function signInAndLoad(isRefresh=false){
   try{
     startSpinner.classList.remove("hidden"); startText.textContent="Signing in...";
@@ -294,15 +292,17 @@ async function signInAndLoad(isRefresh=false){
           li.append(cb, icon, main);
         } else {
           const del=document.createElement("button");
-          del.className="btn small danger-btn";
-          del.style.padding="6px 10px"; del.style.fontSize="12px";
+          del.className="btn danger-btn";
+          del.style.padding="6px 10px";
+          del.style.fontSize="12px";
           del.textContent="Delete";
+
+          /* 🚀 Delete without confirmation */
           del.onclick=()=>{
-            if(confirmOrgName(org.accountName)){
-              showStatus(`⏳ Delete page opened for "${org.accountName}". Scroll to bottom and delete.`);
-              window.open(getDeleteLink(org.accountName, org.accountUri), "_blank");
-            } else alert("Name mismatch. Cancelled.");
+            showStatus(`⏳ Opening delete page for "${org.accountName}"...`);
+            window.open(getDeleteLink(org.accountName, org.accountUri), "_blank");
           };
+
           li.append(cb, icon, main, del);
         }
 
@@ -312,7 +312,7 @@ async function signInAndLoad(isRefresh=false){
       }
     } else orgList.innerHTML="<li>No organizations found.</li>";
 
-    /* Deletion detection */
+    /* 🔍 Deletion detection */
     if(isRefresh && hasInitialSnapshot && lastOrgSnapshot){
       const removed=[];
       for(const id in lastOrgSnapshot){
@@ -340,26 +340,27 @@ async function signInAndLoad(isRefresh=false){
   }
 }
 
-/* LOGOUT */
+/* ---------- SIGN OUT ---------- */
 async function signOut(){
   try{ await msalInstance.logoutPopup({postLogoutRedirectUri:REDIRECT_URI}); } catch{}
   location.reload();
 }
 
-/* EVENTS */
+/* ---------- EVENTS ---------- */
 startBtn.onclick=()=>signInAndLoad(false);
+
 refreshOrgsBtn.onclick=()=>{ showStatus("🔄 Checking..."); signInAndLoad(true); };
+
+/* 🚀 Bulk Delete, no confirmation */
 deleteSelectedBtn.onclick=()=>{
   const selected=[...document.querySelectorAll(".org-select:checked")];
   if(!selected.length) return alert("Select at least one organization.");
-  const list=selected.map(x=>"- "+x.dataset.orgName).join("\n");
-  if(!confirm("This opens delete pages for:\n\n"+list+"\n\nContinue?")) return;
   selected.forEach(cb=>{
-    if(confirmOrgName(cb.dataset.orgName))
-      window.open(getDeleteLink(cb.dataset.orgName, cb.dataset.orgUri),"_blank");
+    window.open(getDeleteLink(cb.dataset.orgName, cb.dataset.orgUri),"_blank");
   });
-  showStatus("⏳ Delete pages opened. Scroll down and delete.");
+  showStatus(`⏳ Delete pages opened for ${selected.length} organization(s).`);
 };
+
 signOutTop.onclick=signOut;
 </script>
 
