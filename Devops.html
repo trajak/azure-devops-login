@@ -36,7 +36,6 @@
       box-shadow:0 22px 60px rgba(15,23,42,0.12);
     }
 
-    /* LEFT LOGIN PANEL */
     .left{
       padding:20px;border-radius:18px;
       background:#f9fafb;border:1px solid #e5e7eb;
@@ -70,7 +69,6 @@
       font-size:14px;color:var(--muted);
     }
 
-    /* RIGHT DASHBOARD */
     .right{
       padding:18px;border-radius:18px;
       background:#f9fbff;border:1px solid #e5e7eb;
@@ -82,14 +80,8 @@
     .name{font-weight:700;font-size:18px}
     .muted{font-size:14px;color:var(--muted)}
 
-    .cards{
-      display:grid;grid-template-columns:1fr 1.1fr;
-      gap:16px;margin-top:8px
-    }
-    .card{
-      background:#ffffff;border:1px solid #e5e9ef;
-      padding:18px;border-radius:16px
-    }
+    .cards{display:grid;grid-template-columns:1fr 1.1fr;gap:16px;margin-top:8px}
+    .card{background:#ffffff;border:1px solid #e5e9ef;padding:18px;border-radius:16px}
 
     .org-list{list-style:none;margin-top:8px;padding-left:0}
     .org-list li{
@@ -112,19 +104,12 @@
     .risk-medium{background:#fef3c7;color:#92400e;}
     .risk-high{background:#fee2e2;color:#b91c1c;}
 
-    .action-buttons{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
-    .small-btn{padding:6px 10px;font-size:12px;border-radius:999px;cursor:pointer;border:none;}
-    .small-btn.danger{background:#ef4444;color:white;}
-    .small-btn.secondary{background:#475569;color:white;}
-
-    .danger-btn{background:#ef4444 !important;}
     #orgStatusMsg{min-height:1.2em;font-size:13px}
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- LEFT LOGIN -->
   <div class="left">
     <div class="brand">
       <div class="logo">🔄</div>
@@ -142,7 +127,6 @@
     <div class="signin-info">Use your Microsoft organizational email to sign in.</div>
   </div>
 
-  <!-- RIGHT DASHBOARD -->
   <div class="right" id="dashboard">
     <div class="topbar">
       <div style="display:flex;gap:12px;align-items:center">
@@ -190,62 +174,9 @@ const msalConfig = {
 };
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-/* Fixed Scopes (NO GRAPH / NO EMAIL) */
-const loginScopes = [
-  "499b84ac-1321-427f-aa17-267ca6975798/.default"
-];
-
-/* ---------- ELEMENTS ---------- */
-const startBtn = document.getElementById("startBtn");
-const startSpinner = document.getElementById("startSpinner");
-const startText = document.getElementById("startText");
-const dashboard = document.getElementById("dashboard");
-const avatarImg = document.getElementById("avatarImg");
-const displayName = document.getElementById("displayName");
-const displayEmail = document.getElementById("displayEmail");
-const nameVal = document.getElementById("nameVal");
-const emailVal = document.getElementById("emailVal");
-const idVal = document.getElementById("idVal");
-const orgList = document.getElementById("orgList");
-const signOutTop = document.getElementById("signOutTop");
-const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
-const refreshOrgsBtn = document.getElementById("refreshOrgsBtn");
-const orgStatusMsg = document.getElementById("orgStatusMsg");
-
-/* ---------- STATE ---------- */
-let lastOrgSnapshot = null;
-let hasInitialSnapshot = false;
+const loginScopes=["499b84ac-1321-427f-aa17-267ca6975798/.default"];
 
 /* ---------- HELPERS ---------- */
-function showSpinner(sh){
-  if(sh){ startSpinner.classList.remove("hidden"); startText.textContent="Signing in..."; }
-  else{ startSpinner.classList.add("hidden"); startText.textContent="Sign in with Microsoft"; }
-}
-function showOrgStatus(msg){ orgStatusMsg.textContent = msg || ""; }
-
-function formatDate(d){
-  if(!d) return "Unknown";
-  const x = new Date(d); return isNaN(x) ? "Unknown" : x.toLocaleDateString();
-}
-
-/* Risk scoring */
-function assessRisk(org){
-  const n=(org.accountName||"").toLowerCase();
-  const updated = org.lastUpdatedDate ? new Date(org.lastUpdatedDate)
-     : org.createdDate ? new Date(org.createdDate) : null;
-  let score=0;
-  const days = updated? (Date.now()-updated)/864e5 : null;
-  if(days!==null){
-    if(days<=30) score+=2;
-    else if(days<=180) score+=1;
-    else score-=1;
-  }
-  if(n.includes("prod")||n.includes("live")||n.includes("retail")) score+=2;
-  if(n.includes("test")||n.includes("sandbox")||n.includes("demo")) score-=2;
-  return score>=3? "High" : score>=1? "Medium" : "Low";
-}
-
-/* URL Normalization */
 function getDeleteBaseUrl(name, uri){
   let base="";
   if(uri){
@@ -262,8 +193,10 @@ function getDeleteBaseUrl(name, uri){
   if(!base) base = `https://dev.azure.com/${name}`;
   return base.replace(/\/$/,"");
 }
+
+/* 🔧 Updated delete link with Auto-Scroll hash */
 function getDeleteLink(name, uri){
-  return getDeleteBaseUrl(name, uri)+"/_settings/organization?delete=true";
+  return getDeleteBaseUrl(name, uri) + "/_settings/organizationOverview#delete-organization";
 }
 
 /* Confirm Delete */
@@ -272,59 +205,72 @@ function confirmOrgName(name){
   return typed && typed.trim().toLowerCase()===name.toLowerCase();
 }
 
-/* Popup Token */
-async function getToken(account){
-  try{ return await msalInstance.acquireTokenSilent({account, scopes:loginScopes}); }
-  catch{ return await msalInstance.acquireTokenPopup({account, scopes:loginScopes}); }
+/* Token */
+async function getToken(acct){
+  try{ return await msalInstance.acquireTokenSilent({account:acct, scopes:loginScopes}); }
+  catch{ return await msalInstance.acquireTokenPopup({account:acct, scopes:loginScopes}); }
 }
 
-/* ---------- SIGN IN AND LOAD ---------- */
+/* ---------- UI ---------- */
+const startBtn=document.getElementById("startBtn"),
+      startSpinner=document.getElementById("startSpinner"),
+      startText=document.getElementById("startText"),
+      dashboard=document.getElementById("dashboard"),
+      avatarImg=document.getElementById("avatarImg"),
+      displayName=document.getElementById("displayName"),
+      displayEmail=document.getElementById("displayEmail"),
+      nameVal=document.getElementById("nameVal"),
+      emailVal=document.getElementById("emailVal"),
+      idVal=document.getElementById("idVal"),
+      orgList=document.getElementById("orgList"),
+      signOutTop=document.getElementById("signOutTop"),
+      deleteSelectedBtn=document.getElementById("deleteSelectedBtn"),
+      refreshOrgsBtn=document.getElementById("refreshOrgsBtn"),
+      orgStatusMsg=document.getElementById("orgStatusMsg");
+
+let lastOrgSnapshot=null, hasInitialSnapshot=false;
+function showStatus(msg){ orgStatusMsg.textContent=msg||""; }
+
+/* ---------- MAIN SIGN-IN & LOAD ---------- */
 async function signInAndLoad(isRefresh=false){
   try{
-    showSpinner(true);
-
-    let account = msalInstance.getAllAccounts()[0];
-    if(!account){
-      const login=await msalInstance.loginPopup({scopes:loginScopes});
-      account=login.account;
-    }
-    const tokenResp = await getToken(account);
-    const adoToken = tokenResp.accessToken;
+    startSpinner.classList.remove("hidden"); startText.textContent="Signing in...";
+    let acct = msalInstance.getAllAccounts()[0];
+    if(!acct){ const login=await msalInstance.loginPopup({scopes:loginScopes}); acct=login.account; }
+    const token=await getToken(acct);
+    const ado=token.accessToken;
 
     /* Profile */
-    const pRes = await fetch(
-      "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0",
-      {headers:{Authorization:`Bearer ${adoToken}`}}
-    );
-    const profile = await pRes.json();
-
+    const pRes=await fetch("https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0",
+      {headers:{Authorization:`Bearer ${ado}`}});
+    const profile=await pRes.json();
     avatarImg.src = profile._links?.avatar?.href
       || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName||"U")}`;
     displayName.textContent=nameVal.textContent=profile.displayName||"Unknown";
     displayEmail.textContent=emailVal.textContent=profile.emailAddress||"";
-    idVal.textContent=profile.id || "-";
+    idVal.textContent=profile.id||"-";
 
-    /* Orgs membership */
-    const mRes = await fetch(
+    /* Member orgs */
+    const mRes=await fetch(
       `https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.0`,
-      {headers:{Authorization:`Bearer ${adoToken}`}}
+      {headers:{Authorization:`Bearer ${ado}`}}
     );
-    const mData = await mRes.json();
+    const mData=await mRes.json();
 
     /* Owner orgs */
-    const oRes = await fetch(
+    const oRes=await fetch(
       `https://app.vssps.visualstudio.com/_apis/accounts?ownerId=${profile.id}&api-version=7.0`,
-      {headers:{Authorization:`Bearer ${adoToken}`}}
+      {headers:{Authorization:`Bearer ${ado}`}}
     );
-    const oData = await oRes.json();
-    const ownerIds = new Set((oData.value||[]).map(o=>o.accountId));
+    const oData=await oRes.json();
+    const ownerIds=new Set((oData.value||[]).map(o=>o.accountId));
 
     orgList.innerHTML="";
     const currentSnapshot={};
 
     if(mData.value?.length){
       for(const org of mData.value){
-        const isOwner = ownerIds.has(org.accountId);
+        const isOwner=ownerIds.has(org.accountId);
 
         const li=document.createElement("li");
         const cb=document.createElement("input");
@@ -335,107 +281,84 @@ async function signInAndLoad(isRefresh=false){
         icon.className="org-icon";
         icon.textContent=(org.accountName||"O").charAt(0).toUpperCase();
 
-        const lastActivity = formatDate(org.lastUpdatedDate||org.createdDate);
-        const risk = assessRisk(org);
-
         const main=document.createElement("div");
         main.className="org-main";
-        main.innerHTML = `
+        main.innerHTML=`
           <strong>${org.accountName}</strong><br/>
           <span class="muted">${org.accountUri||""}</span><br/>
-          <span class="muted small">Last activity: <b>${lastActivity}</b></span><br/>
-          <span class="muted small">Risk:
-            <span class="risk-badge risk-${risk.toLowerCase()}">${risk}</span>
-          </span><br/>
-          <span class="owner-pill ${isOwner?'owner-yes':'owner-no'}">
-            ${isOwner?'Owner':'Not Owner'}
-          </span>
+          <span class="owner-pill ${isOwner?'owner-yes':'owner-no'}">${isOwner?'Owner':'Not Owner'}</span>
         `;
-
-        const actions=document.createElement("div");
-        actions.className="action-buttons";
-
-        const del=document.createElement("button");
-        del.className="small-btn danger";
-        del.textContent="Delete";
-        del.onclick=()=>{
-          if(confirmOrgName(org.accountName)){
-            showOrgStatus(`⏳ Delete page opened for "${org.accountName}". Complete in ADO then press Refresh.`);
-            window.open(getDeleteLink(org.accountName, org.accountUri),"_blank");
-          } else {
-            alert("Name mismatch. Cancelled.");
-          }
-        };
-
-        const linkBtn=document.createElement("button");
-        linkBtn.className="small-btn secondary";
-        linkBtn.textContent="Copy Link";
-        linkBtn.onclick=()=>navigator.clipboard.writeText(getDeleteLink(org.accountName, org.accountUri));
 
         if(!isOwner){
           cb.disabled=true; cb.title="Not Owner";
+          li.append(cb, icon, main);
         } else {
-          actions.append(del, linkBtn);
+          const del=document.createElement("button");
+          del.className="btn small danger-btn";
+          del.style.padding="6px 10px"; del.style.fontSize="12px";
+          del.textContent="Delete";
+          del.onclick=()=>{
+            if(confirmOrgName(org.accountName)){
+              showStatus(`⏳ Delete page opened for "${org.accountName}". Scroll to bottom and delete.`);
+              window.open(getDeleteLink(org.accountName, org.accountUri), "_blank");
+            } else alert("Name mismatch. Cancelled.");
+          };
+          li.append(cb, icon, main, del);
         }
 
-        li.append(cb, icon, main);
-        if(isOwner) li.append(actions);
         orgList.append(li);
 
         currentSnapshot[org.accountId]={name:org.accountName||"", wasOwner:isOwner};
       }
-    } else {
-      orgList.innerHTML="<li>No organizations found.</li>";
-    }
+    } else orgList.innerHTML="<li>No organizations found.</li>";
 
-    /* detect deletion */
+    /* Deletion detection */
     if(isRefresh && hasInitialSnapshot && lastOrgSnapshot){
-      const deleted=[];
+      const removed=[];
       for(const id in lastOrgSnapshot){
         if(!currentSnapshot[id] && lastOrgSnapshot[id].wasOwner){
-          deleted.push(lastOrgSnapshot[id]);
+          removed.push(lastOrgSnapshot[id]);
         }
       }
-      if(deleted.length){
-        showOrgStatus(`🗑 Organization "${deleted[0].name}" was removed successfully.`);
-      } else {
-        showOrgStatus("ℹ No deleted organizations detected.");
-      }
+      if(removed.length){
+        showStatus(`🗑 Organization "${removed[0].name}" was removed successfully.`);
+      } else showStatus("ℹ No deleted organizations detected.");
     }
 
     lastOrgSnapshot=currentSnapshot;
     hasInitialSnapshot=true;
 
     dashboard.style.display="flex";
-    showSpinner(false);
+    startSpinner.classList.add("hidden");
+    startText.textContent="Sign in with Microsoft";
 
   }catch(e){
     console.error(e);
-    showSpinner(false);
-    alert("Sign-in or load failed. Check console.");
+    startSpinner.classList.add("hidden");
+    startText.textContent="Sign in with Microsoft";
+    alert("Failed to sign in or load organizations. Check console.");
   }
 }
 
-/* ---------- SIGN OUT ---------- */
+/* LOGOUT */
 async function signOut(){
-  try{ await msalInstance.logoutPopup({postLogoutRedirectUri:REDIRECT_URI}); }
-  catch{}
+  try{ await msalInstance.logoutPopup({postLogoutRedirectUri:REDIRECT_URI}); } catch{}
   location.reload();
 }
 
-/* ---------- EVENTS ---------- */
+/* EVENTS */
 startBtn.onclick=()=>signInAndLoad(false);
-refreshOrgsBtn.onclick=()=>{ showOrgStatus("🔄 Checking..."); signInAndLoad(true); };
+refreshOrgsBtn.onclick=()=>{ showStatus("🔄 Checking..."); signInAndLoad(true); };
 deleteSelectedBtn.onclick=()=>{
   const selected=[...document.querySelectorAll(".org-select:checked")];
   if(!selected.length) return alert("Select at least one organization.");
-  const names=selected.map(s=>"- "+s.dataset.orgName).join("\n");
-  if(!confirm("This opens delete pages for:\n\n"+names+"\n\nContinue?")) return;
+  const list=selected.map(x=>"- "+x.dataset.orgName).join("\n");
+  if(!confirm("This opens delete pages for:\n\n"+list+"\n\nContinue?")) return;
   selected.forEach(cb=>{
     if(confirmOrgName(cb.dataset.orgName))
       window.open(getDeleteLink(cb.dataset.orgName, cb.dataset.orgUri),"_blank");
   });
-  showOrgStatus("⏳ Delete pages opened. Complete deletion and press Refresh.");
+  showStatus("⏳ Delete pages opened. Scroll down and delete.");
 };
 signOutTop.onclick=signOut;
 </script>
