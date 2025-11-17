@@ -34,11 +34,11 @@
       border:1px solid var(--border-glass);
       border-radius:22px;
       box-shadow:0 22px 60px rgba(15,23,42,0.12);
-      animation:fadeIn .5s both;
     }
-    @keyframes fadeIn{from{opacity:0;transform:translateY(15px)}}
+
+    /* LEFT LOGIN PANEL */
     .left{
-      padding:20px 20px 22px;border-radius:18px;
+      padding:20px;border-radius:18px;
       background:#f9fafb;border:1px solid #e5e7eb;
       display:flex;flex-direction:column;
     }
@@ -48,7 +48,6 @@
       background:#eef3ff;display:flex;align-items:center;justify-content:center;
       border:1px solid #d1d5db;
     }
-    .logo svg{width:34px;height:34px}
     .title{font-size:22px;font-weight:700;margin-bottom:4px}
     .subtitle{font-size:14px;color:var(--muted);margin-bottom:14px}
 
@@ -71,20 +70,26 @@
       font-size:14px;color:var(--muted);
     }
 
+    /* RIGHT DASHBOARD */
     .right{
-      padding:18px 20px;border-radius:18px;
+      padding:18px;border-radius:18px;
       background:#f9fbff;border:1px solid #e5e7eb;
       display:none;flex-direction:column;gap:18px;
     }
-
     .topbar{display:flex;justify-content:space-between;align-items:center}
     .avatar{width:60px;height:60px;border-radius:18px;overflow:hidden;background:#e5e7eb}
     .avatar img{width:100%;height:100%;object-fit:cover}
     .name{font-weight:700;font-size:18px}
     .muted{font-size:14px;color:var(--muted)}
 
-    .cards{display:grid;grid-template-columns:1fr 1.1fr;gap:16px;margin-top:8px}
-    .card{background:#ffffff;border:1px solid #e5e9ef;padding:18px;border-radius:16px}
+    .cards{
+      display:grid;grid-template-columns:1fr 1.1fr;
+      gap:16px;margin-top:8px
+    }
+    .card{
+      background:#ffffff;border:1px solid #e5e9ef;
+      padding:18px;border-radius:16px
+    }
 
     .org-list{list-style:none;margin-top:8px;padding-left:0}
     .org-list li{
@@ -113,23 +118,16 @@
     .small-btn.secondary{background:#475569;color:white;}
 
     .danger-btn{background:#ef4444 !important;}
-
     #orgStatusMsg{min-height:1.2em;font-size:13px}
-
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- LEFT LOGIN PANEL -->
+  <!-- LEFT LOGIN -->
   <div class="left">
     <div class="brand">
-      <div class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#0A66C2" stroke-width="1.6">
-          <path d="M3 12c0-3.9 3.6-7 8-7 3.2 0 5 1.8 6 3.1"/>
-          <path d="M21 12c0 3.9-3.6 7-8 7-3.2 0-5-1.8-6-3.1"/>
-        </svg>
-      </div>
+      <div class="logo">🔄</div>
       <div>
         <div class="title">Azure DevOps Portal</div>
         <div class="subtitle">Secure sign-in to access dashboard</div>
@@ -141,9 +139,7 @@
       <span id="startSpinner" class="spinner hidden"></span>
     </button>
 
-    <div class="signin-info">
-      Use your Microsoft organizational email to sign in.
-    </div>
+    <div class="signin-info">Use your Microsoft organizational email to sign in.</div>
   </div>
 
   <!-- RIGHT DASHBOARD -->
@@ -190,16 +186,16 @@ const REDIRECT_URI = "https://trajak.github.io/azure-devops-login/Devops.html";
 
 const msalConfig = {
   auth:{ clientId:CLIENT_ID, authority:"https://login.microsoftonline.com/common", redirectUri:REDIRECT_URI },
-  cache:{ cacheLocation:"localStorage", storeAuthStateInCookie:false }
+  cache:{ cacheLocation:"localStorage" }
 };
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
+/* Fixed Scopes (NO GRAPH / NO EMAIL) */
 const loginScopes = [
-  "User.Read",
   "499b84ac-1321-427f-aa17-267ca6975798/.default"
 ];
 
-/* ---------- UI ELEMENTS ---------- */
+/* ---------- ELEMENTS ---------- */
 const startBtn = document.getElementById("startBtn");
 const startSpinner = document.getElementById("startSpinner");
 const startText = document.getElementById("startText");
@@ -221,130 +217,123 @@ let lastOrgSnapshot = null;
 let hasInitialSnapshot = false;
 
 /* ---------- HELPERS ---------- */
-function showSpinner(show){
-  if(show){ startSpinner.classList.remove("hidden"); startText.textContent = "Signing in..."; }
-  else { startSpinner.classList.add("hidden"); startText.textContent = "Sign in with Microsoft"; }
+function showSpinner(sh){
+  if(sh){ startSpinner.classList.remove("hidden"); startText.textContent="Signing in..."; }
+  else{ startSpinner.classList.add("hidden"); startText.textContent="Sign in with Microsoft"; }
 }
-function showOrgStatus(message){ orgStatusMsg.textContent = message || ""; }
+function showOrgStatus(msg){ orgStatusMsg.textContent = msg || ""; }
 
-function formatDate(dateString){
-  if(!dateString) return "Unknown";
-  const d = new Date(dateString);
-  return isNaN(d.getTime()) ? "Unknown" : d.toLocaleDateString();
+function formatDate(d){
+  if(!d) return "Unknown";
+  const x = new Date(d); return isNaN(x) ? "Unknown" : x.toLocaleDateString();
 }
 
-/* ---------- RISK ---------- */
+/* Risk scoring */
 function assessRisk(org){
-  const name = (org.accountName || "").toLowerCase();
+  const n=(org.accountName||"").toLowerCase();
   const updated = org.lastUpdatedDate ? new Date(org.lastUpdatedDate)
-               : org.createdDate ? new Date(org.createdDate) : null;
-  let score=0, reasons=[];
-  if(updated && !isNaN(updated.getTime())){
-    const days = (Date.now() - updated)/864e5;
-    if(days <=30){ score+=2; reasons.push("recent"); }
-    else if(days <=180){ score+=1; reasons.push("active <6m"); }
-    else { score-=1; reasons.push("inactive long"); }
+     : org.createdDate ? new Date(org.createdDate) : null;
+  let score=0;
+  const days = updated? (Date.now()-updated)/864e5 : null;
+  if(days!==null){
+    if(days<=30) score+=2;
+    else if(days<=180) score+=1;
+    else score-=1;
   }
-  if(name.includes("prod")||name.includes("live")||name.includes("retail")){ score+=2; reasons.push("production term"); }
-  if(name.includes("test")||name.includes("demo")||name.includes("sandbox")||name.includes("poc")){ score-=2; reasons.push("non-prod name"); }
-
-  return score>=3? {level:"High",reason:reasons.join(",")}
-       : score>=1? {level:"Medium",reason:reasons.join(",")}
-       : {level:"Low",reason:reasons.join(",")};
+  if(n.includes("prod")||n.includes("live")||n.includes("retail")) score+=2;
+  if(n.includes("test")||n.includes("sandbox")||n.includes("demo")) score-=2;
+  return score>=3? "High" : score>=1? "Medium" : "Low";
 }
 
-/* ---------- URL Normalizer ---------- */
+/* URL Normalization */
 function getDeleteBaseUrl(name, uri){
   let base="";
-  if(uri && uri.trim()){
+  if(uri){
     uri=uri.trim();
     if(uri.includes(".visualstudio.com")){
-      const m = uri.match(/https:\/\/([^.]+)\.visualstudio\.com/i);
-      if(m && m[1]) base=`https://dev.azure.com/${m[1]}`;
+      const m=uri.match(/https:\/\/([^.]+)\.visualstudio\.com/i);
+      if(m) base=`https://dev.azure.com/${m[1]}`;
     } else if(uri.includes("vssps.dev.azure.com")){
-      base = uri.replace("vssps.dev.azure.com","dev.azure.com");
+      base=uri.replace("vssps.dev.azure.com","dev.azure.com");
     } else if(uri.includes("dev.azure.com")){
-      base = uri;
+      base=uri;
     }
   }
   if(!base) base = `https://dev.azure.com/${name}`;
   return base.replace(/\/$/,"");
 }
 function getDeleteLink(name, uri){
-  return getDeleteBaseUrl(name, uri) + "/_settings/organization?delete=true";
+  return getDeleteBaseUrl(name, uri)+"/_settings/organization?delete=true";
 }
 
-/* ---------- DELETE CONFIRM ---------- */
+/* Confirm Delete */
 function confirmOrgName(name){
-  const typed = prompt(`To confirm deletion, type this organization name:\n\n${name}`);
-  return typed && typed.trim().toLowerCase() === name.toLowerCase();
+  const typed=prompt(`To confirm deletion, type this name:\n\n${name}`);
+  return typed && typed.trim().toLowerCase()===name.toLowerCase();
 }
 
-function handleDeleteClick(name, uri, risk, lastActivity){
-  if(!confirmOrgName(name)){ alert("Name mismatch. Deletion cancelled."); return; }
-  showOrgStatus(`⏳ Delete page opened for "${name}". Complete deletion in Azure DevOps, then press Refresh.`);
-  window.open(getDeleteLink(name, uri), "_blank");
-}
-
-/* ---------- TOKEN ---------- */
+/* Popup Token */
 async function getToken(account){
   try{ return await msalInstance.acquireTokenSilent({account, scopes:loginScopes}); }
   catch{ return await msalInstance.acquireTokenPopup({account, scopes:loginScopes}); }
 }
 
-/* ---------- MAIN LOAD ---------- */
+/* ---------- SIGN IN AND LOAD ---------- */
 async function signInAndLoad(isRefresh=false){
   try{
     showSpinner(true);
+
     let account = msalInstance.getAllAccounts()[0];
     if(!account){
-      const login = await msalInstance.loginPopup({scopes:loginScopes});
-      account = login.account;
+      const login=await msalInstance.loginPopup({scopes:loginScopes});
+      account=login.account;
     }
     const tokenResp = await getToken(account);
     const adoToken = tokenResp.accessToken;
 
-    const profileRes = await fetch(
+    /* Profile */
+    const pRes = await fetch(
       "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0",
       {headers:{Authorization:`Bearer ${adoToken}`}}
     );
-    const profile = await profileRes.json();
+    const profile = await pRes.json();
 
     avatarImg.src = profile._links?.avatar?.href
       || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName||"U")}`;
-    displayName.textContent = nameVal.textContent = profile.displayName || "Unknown";
-    displayEmail.textContent = emailVal.textContent = profile.emailAddress || "";
-    idVal.textContent = profile.id || "-";
+    displayName.textContent=nameVal.textContent=profile.displayName||"Unknown";
+    displayEmail.textContent=emailVal.textContent=profile.emailAddress||"";
+    idVal.textContent=profile.id || "-";
 
-    const memberRes = await fetch(
+    /* Orgs membership */
+    const mRes = await fetch(
       `https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.0`,
       {headers:{Authorization:`Bearer ${adoToken}`}}
     );
-    const memberData = await memberRes.json();
+    const mData = await mRes.json();
 
-    const ownerRes = await fetch(
+    /* Owner orgs */
+    const oRes = await fetch(
       `https://app.vssps.visualstudio.com/_apis/accounts?ownerId=${profile.id}&api-version=7.0`,
       {headers:{Authorization:`Bearer ${adoToken}`}}
     );
-    const ownerData = await ownerRes.json();
-    const ownerIds = new Set((ownerData.value || []).map(o=>o.accountId));
+    const oData = await oRes.json();
+    const ownerIds = new Set((oData.value||[]).map(o=>o.accountId));
 
-    orgList.innerHTML = "";
-    const currentSnapshot = {};
+    orgList.innerHTML="";
+    const currentSnapshot={};
 
-    if(memberData.value?.length){
-      for(const org of memberData.value){
+    if(mData.value?.length){
+      for(const org of mData.value){
         const isOwner = ownerIds.has(org.accountId);
-        const li = document.createElement("li");
 
-        const cb = document.createElement("input");
+        const li=document.createElement("li");
+        const cb=document.createElement("input");
         cb.type="checkbox"; cb.className="org-select";
-        cb.dataset.orgName = org.accountName||"";
-        cb.dataset.orgUri = org.accountUri||"";
+        cb.dataset.orgName=org.accountName||""; cb.dataset.orgUri=org.accountUri||"";
 
         const icon=document.createElement("div");
         icon.className="org-icon";
-        icon.textContent = (org.accountName||"O").charAt(0).toUpperCase();
+        icon.textContent=(org.accountName||"O").charAt(0).toUpperCase();
 
         const lastActivity = formatDate(org.lastUpdatedDate||org.createdDate);
         const risk = assessRisk(org);
@@ -356,7 +345,7 @@ async function signInAndLoad(isRefresh=false){
           <span class="muted">${org.accountUri||""}</span><br/>
           <span class="muted small">Last activity: <b>${lastActivity}</b></span><br/>
           <span class="muted small">Risk:
-            <span class="risk-badge risk-${risk.level.toLowerCase()}">${risk.level}</span>
+            <span class="risk-badge risk-${risk.toLowerCase()}">${risk}</span>
           </span><br/>
           <span class="owner-pill ${isOwner?'owner-yes':'owner-no'}">
             ${isOwner?'Owner':'Not Owner'}
@@ -369,11 +358,14 @@ async function signInAndLoad(isRefresh=false){
         const del=document.createElement("button");
         del.className="small-btn danger";
         del.textContent="Delete";
-        del.onclick=()=>handleDeleteClick(
-           org.accountName, org.accountUri,
-           `${risk.level} (${risk.reason})`,
-           lastActivity
-        );
+        del.onclick=()=>{
+          if(confirmOrgName(org.accountName)){
+            showOrgStatus(`⏳ Delete page opened for "${org.accountName}". Complete in ADO then press Refresh.`);
+            window.open(getDeleteLink(org.accountName, org.accountUri),"_blank");
+          } else {
+            alert("Name mismatch. Cancelled.");
+          }
+        };
 
         const linkBtn=document.createElement("button");
         linkBtn.className="small-btn secondary";
@@ -381,8 +373,7 @@ async function signInAndLoad(isRefresh=false){
         linkBtn.onclick=()=>navigator.clipboard.writeText(getDeleteLink(org.accountName, org.accountUri));
 
         if(!isOwner){
-          cb.disabled=true;
-          cb.title="You are not the owner";
+          cb.disabled=true; cb.title="Not Owner";
         } else {
           actions.append(del, linkBtn);
         }
@@ -391,17 +382,13 @@ async function signInAndLoad(isRefresh=false){
         if(isOwner) li.append(actions);
         orgList.append(li);
 
-        currentSnapshot[org.accountId] = {
-          name: org.accountName||"",
-          lastActivity,
-          wasOwner: isOwner
-        };
+        currentSnapshot[org.accountId]={name:org.accountName||"", wasOwner:isOwner};
       }
     } else {
       orgList.innerHTML="<li>No organizations found.</li>";
     }
 
-    /* detect deletion on refresh */
+    /* detect deletion */
     if(isRefresh && hasInitialSnapshot && lastOrgSnapshot){
       const deleted=[];
       for(const id in lastOrgSnapshot){
@@ -412,10 +399,8 @@ async function signInAndLoad(isRefresh=false){
       if(deleted.length){
         showOrgStatus(`🗑 Organization "${deleted[0].name}" was removed successfully.`);
       } else {
-        showOrgStatus("ℹ No deleted organizations detected yet.");
+        showOrgStatus("ℹ No deleted organizations detected.");
       }
-    } else {
-      showOrgStatus("");
     }
 
     lastOrgSnapshot=currentSnapshot;
@@ -424,14 +409,14 @@ async function signInAndLoad(isRefresh=false){
     dashboard.style.display="flex";
     showSpinner(false);
 
-  }catch(err){
-    console.error(err);
+  }catch(e){
+    console.error(e);
     showSpinner(false);
     alert("Sign-in or load failed. Check console.");
   }
 }
 
-/* ---------- LOGOUT ---------- */
+/* ---------- SIGN OUT ---------- */
 async function signOut(){
   try{ await msalInstance.logoutPopup({postLogoutRedirectUri:REDIRECT_URI}); }
   catch{}
@@ -439,20 +424,20 @@ async function signOut(){
 }
 
 /* ---------- EVENTS ---------- */
-startBtn.onclick = ()=>signInAndLoad(false);
-signOutTop.onclick = signOut;
-refreshOrgsBtn.onclick = ()=>{showOrgStatus("🔄 Checking..."); signInAndLoad(true);};
-deleteSelectedBtn.onclick = ()=>{
+startBtn.onclick=()=>signInAndLoad(false);
+refreshOrgsBtn.onclick=()=>{ showOrgStatus("🔄 Checking..."); signInAndLoad(true); };
+deleteSelectedBtn.onclick=()=>{
   const selected=[...document.querySelectorAll(".org-select:checked")];
   if(!selected.length) return alert("Select at least one organization.");
-  const list=selected.map(x=>"- "+x.dataset.orgName).join("\n");
-  if(!confirm("This opens delete pages in new tabs:\n\n"+list+"\n\nContinue?")) return;
+  const names=selected.map(s=>"- "+s.dataset.orgName).join("\n");
+  if(!confirm("This opens delete pages for:\n\n"+names+"\n\nContinue?")) return;
   selected.forEach(cb=>{
     if(confirmOrgName(cb.dataset.orgName))
       window.open(getDeleteLink(cb.dataset.orgName, cb.dataset.orgUri),"_blank");
   });
   showOrgStatus("⏳ Delete pages opened. Complete deletion and press Refresh.");
 };
+signOutTop.onclick=signOut;
 </script>
 
 </body>
